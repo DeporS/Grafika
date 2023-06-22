@@ -10,6 +10,9 @@ in vec4 ic;
 in vec4 n;
 in vec4 l;
 in vec4 l2;
+in vec4 l3;
+in vec4 l4;
+in vec4 l5;
 in vec4 v;
 in vec2 iTexCoord0;
 
@@ -46,6 +49,9 @@ void main(void) {
 	//Znormalizowane interpolowane wektory
 	vec4 ml = normalize(l);
 	vec4 ml2 = normalize(l2);
+	vec4 ml3 = normalize(l3);
+	vec4 ml4 = normalize(l4);
+	vec4 ml5 = normalize(l5);
 	vec4 mv = normalize(v);
 	vec2 tc = parallax(mv, iTexCoord0, 700, 0.03);
 	vec4 mn = normalize(vec4(texture(textureMap1, tc).rgb*2-1,0));
@@ -53,6 +59,9 @@ void main(void) {
 	//Wektor odbity
 	vec4 mr = reflect(-ml, mn);
 	vec4 mr2 = reflect(-ml2, mn);
+	vec4 mr3 = reflect(-ml3, mn);
+	vec4 mr4 = reflect(-ml4, mn);
+	vec4 mr5 = reflect(-ml5, mn);
 
 	//Parametry powierzchni
 	vec4 kd = texture(textureMap0, tc); 
@@ -68,4 +77,19 @@ void main(void) {
 	float nl2 = clamp(dot(mn, ml2), 0, 1);
 	float rv2 = pow(clamp(dot(mr2, mv), 0, 1),25);
 	pixelColor += vec4(kd.rgb * nl2, kd.a) + vec4(ks.rgb*rv2, 0);
+
+	//Obliczenie modelu oświetlenia
+	float nl3 = clamp(dot(mn, ml3), 0, 1);
+	float rv3 = pow(clamp(dot(mr3, mv), 0, 1),25);
+	pixelColor += vec4(kd.rgb * nl3, kd.a) + vec4(ks.rgb*rv3, 0);
+
+	//Obliczenie modelu oświetlenia
+	float nl4 = clamp(dot(mn, ml4), 0, 1);
+	float rv4 = pow(clamp(dot(mr4, mv), 0, 1),25);
+	pixelColor += vec4(kd.rgb * nl4, kd.a) + vec4(ks.rgb*rv4, 0);
+
+	//Obliczenie modelu oświetlenia
+	float nl5 = clamp(dot(mn, ml5), 0, 1);
+	float rv5 = pow(clamp(dot(mr5, mv), 0, 1),25);
+	pixelColor += vec4(kd.rgb * nl5, kd.a) + vec4(ks.rgb*rv5, 0);
 }

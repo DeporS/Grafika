@@ -359,6 +359,81 @@ void build_floor(double x, double y, double z)
 	}
 }
 
+void ufo_body(glm::mat4 M_ufo, glm::vec3 ufopos) {
+	
+	std::vector<glm::vec3> vectorList;
+
+	vectorList.push_back(glm::vec3(2.0f, 0.0f, 0.0f));
+	vectorList.push_back(glm::vec3(2.0f, 0.0f, 2.0f));
+	vectorList.push_back(glm::vec3(0.0f, 0.0f, 2.0f));
+	vectorList.push_back(glm::vec3(-2.0f, 0.0f, 0.0f));
+	vectorList.push_back(glm::vec3(0.0f, 0.0f, -2.0f));
+	vectorList.push_back(glm::vec3(-2.0f, 0.0f, -2.0f));
+	vectorList.push_back(glm::vec3(-2.0f, 0.0f, 2.0f));
+	vectorList.push_back(glm::vec3(2.0f, 0.0f, -2.0f));
+
+	for (int i = 0; i < 8; i++) {
+		glm::mat4 Mnew = glm::mat4(1.0f);
+
+		Mnew = glm::translate(M_ufo, vectorList[i]);
+
+		// Przekaż nową macierz modelu (M2) do programu cieniującego
+		glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mnew));
+
+		// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
+		glEnableVertexAttribArray(spTextured->a("vertex"));
+		glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+		glEnableVertexAttribArray(spTextured->a("color"));
+		glVertexAttribPointer(spTextured->a("color"), 4, GL_FLOAT, false, 0, colors);
+
+		glEnableVertexAttribArray(spTextured->a("normal"));
+		glVertexAttribPointer(spTextured->a("normal"), 4, GL_FLOAT, false, 0, normals);
+
+		glEnableVertexAttribArray(spTextured->a("texCoord0"));
+		glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+		// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+		// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
+		glDisableVertexAttribArray(spTextured->a("vertex"));
+		glDisableVertexAttribArray(spTextured->a("color"));
+		glDisableVertexAttribArray(spTextured->a("normal"));
+		glDisableVertexAttribArray(spTextured->a("texCoord0"));
+	}
+
+	glm::mat4 Mnew = glm::mat4(1.0f);
+
+	Mnew = glm::translate(M_ufo, glm::vec3(0,2,0));
+
+	// Przekaż nową macierz modelu (M2) do programu cieniującego
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mnew));
+
+	// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+	glEnableVertexAttribArray(spTextured->a("color"));
+	glVertexAttribPointer(spTextured->a("color"), 4, GL_FLOAT, false, 0, colors);
+
+	glEnableVertexAttribArray(spTextured->a("normal"));
+	glVertexAttribPointer(spTextured->a("normal"), 4, GL_FLOAT, false, 0, normals);
+
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
+	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+	// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("color"));
+	glDisableVertexAttribArray(spTextured->a("normal"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
+	
+}
+
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	//************Tutaj umieszczaj kod rysujący obraz******************l
@@ -481,7 +556,7 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	// UFO, wokol ktorego bedzie sie obracac kamera
 	glm::mat4 M6 = glm::mat4(1.0f);
 	M6 = glm::translate(M6, ufoPosition); // Przesuń drugi obiekt wzdłuż osi x
-	M6 = glm::scale(M6, glm::vec3(0.1f, 0.1f, 0.1f));
+	M6 = glm::scale(M6, glm::vec3(0.02f, 0.02f, 0.02f));
 
 	M6 = glm::rotate(M6, -angle_ufo, glm::vec3(0, 1, 0)); // obracanie wraz z ruchem myszki
 
@@ -516,6 +591,8 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	glDisableVertexAttribArray(spTextured->a("normal"));
 	glDisableVertexAttribArray(spTextured->a("texCoord0"));
 
+
+	ufo_body(M6, ufoPosition);
 
 	glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
 }
