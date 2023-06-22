@@ -63,6 +63,8 @@ GLuint tex2;
 GLuint tex3;
 GLuint tex4;
 GLuint tex5;
+GLuint tex6;
+GLuint tex7;
 GLuint tex69;
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -171,7 +173,7 @@ GLuint readTexture(const char* filename) {
 //Procedura inicjująca
 void initOpenGLProgram(GLFWwindow* window) {
 	//************Tutaj umieszczaj kod, który należy wykonać raz, na początku programu************
-	glClearColor(0, 0, 0, 1);
+	glClearColor(0.7, 0.8, 0.8, 1);
 	glEnable(GL_DEPTH_TEST);
 	glfwSetWindowSizeCallback(window, windowResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
@@ -184,6 +186,9 @@ void initOpenGLProgram(GLFWwindow* window) {
 	tex3 = readTexture("bricks3b_diffuse.png");
 	tex4 = readTexture("bricks3b_normal.png");
 	tex5 = readTexture("bricks3b_height.png");
+
+	tex6 = readTexture("iron.png");
+	tex7 = readTexture("glass.png");
 
 	tex69 = readTexture("zajebistatekstura.png");
 }
@@ -393,6 +398,18 @@ void ufo_body(glm::mat4 M_ufo, glm::vec3 ufopos) {
 		glEnableVertexAttribArray(spTextured->a("texCoord0"));
 		glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
 
+		glUniform1i(spTextured->u("textureMap0"), 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex6);
+
+		glUniform1i(spTextured->u("textureMap1"), 1);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, tex6);
+
+		glUniform1i(spTextured->u("textureMap2"), 2);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, tex6);
+
 		// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -422,6 +439,18 @@ void ufo_body(glm::mat4 M_ufo, glm::vec3 ufopos) {
 
 	glEnableVertexAttribArray(spTextured->a("texCoord0"));
 	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex7);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex7);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex7);
 
 	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
 	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
@@ -581,6 +610,18 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 
 	glEnableVertexAttribArray(spTextured->a("texCoord0"));
 	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex6);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex6);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex6);
 
 	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
 	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
