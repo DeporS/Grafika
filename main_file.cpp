@@ -32,12 +32,14 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "shaderprogram.h"
 #include "myCube.h"
 #include "myTeapot.h"
+#include <iostream>
+#include <vector>
 
 float speed_x = 0;
 float speed_y = 0;
 float aspectRatio = 1;
 
-ShaderProgram* sp;
+ShaderProgram* spTextured;
 
 
 //Odkomentuj, żeby rysować kostkę
@@ -58,6 +60,10 @@ int vertexCount = myCubeVertexCount;
 GLuint tex0;
 GLuint tex1;
 GLuint tex2;
+GLuint tex3;
+GLuint tex4;
+GLuint tex5;
+GLuint tex69;
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
@@ -79,6 +85,8 @@ float lastX = 400, lastY = 300;
 
 float yaw = 90.0f, pitch = 0.0f;
 
+float angle_ufo = 0;
+
 bool firstMouse = true;
 
 int initialHeight = 900;
@@ -98,12 +106,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		if (key == GLFW_KEY_RIGHT) speed_x = PI / 2;
 		if (key == GLFW_KEY_UP) speed_y = PI / 2;
 		if (key == GLFW_KEY_DOWN) speed_y = -PI / 2;
-		if (key == GLFW_KEY_W) cameraSpeedW = 0.05f;
-		if (key == GLFW_KEY_S) cameraSpeedS = 0.05f;
-		if (key == GLFW_KEY_A) cameraSpeedA = 0.05f;
-		if (key == GLFW_KEY_D) cameraSpeedD = 0.05f;
-		if (key == GLFW_KEY_SPACE) cameraSpeedSpace = 0.05f;
-		if (key == GLFW_KEY_LEFT_CONTROL) cameraSpeedCtrl = 0.05f;
+		if (key == GLFW_KEY_W) cameraSpeedW = 0.1f;
+		if (key == GLFW_KEY_S) cameraSpeedS = 0.1f;
+		if (key == GLFW_KEY_A) cameraSpeedA = 0.1f;
+		if (key == GLFW_KEY_D) cameraSpeedD = 0.1f;
+		if (key == GLFW_KEY_SPACE) cameraSpeedSpace = 0.1f;
+		if (key == GLFW_KEY_LEFT_CONTROL) cameraSpeedCtrl = 0.1f;
 		if (key == GLFW_KEY_LEFT_SHIFT) shiftSpeed = 3.0f; // shift przyspiesza poruszanie
 	}
 	if (action == GLFW_RELEASE) {
@@ -146,9 +154,15 @@ GLuint readTexture(const char* filename) {
 	//Wczytaj obrazek do pamięci KG skojarzonej z uchwytem
 	glTexImage2D(GL_TEXTURE_2D, 0, 4, width, height, 0,
 		GL_RGBA, GL_UNSIGNED_BYTE, (unsigned char*)image.data());
+	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,
+		GL_TEXTURE_WRAP_S,
+		GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,
+		GL_TEXTURE_WRAP_T,
+		GL_MIRRORED_REPEAT);
+
 
 	return tex;
 }
@@ -162,10 +176,16 @@ void initOpenGLProgram(GLFWwindow* window) {
 	glfwSetWindowSizeCallback(window, windowResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
 
-	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
+	spTextured = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
 	tex0 = readTexture("bricks2_diffuse.png");
 	tex1 = readTexture("bricks2_normal.png");
 	tex2 = readTexture("bricks2_height.png");
+
+	tex3 = readTexture("bricks3b_diffuse.png");
+	tex4 = readTexture("bricks3b_normal.png");
+	tex5 = readTexture("bricks3b_height.png");
+
+	tex69 = readTexture("zajebistatekstura.png");
 }
 
 
@@ -173,21 +193,178 @@ void initOpenGLProgram(GLFWwindow* window) {
 void freeOpenGLProgram(GLFWwindow* window) {
 	//************Tutaj umieszczaj kod, który należy wykonać po zakończeniu pętli głównej************
 
-	delete sp;
+	delete spTextured;
 }
 
 
+glm::vec3 ufoLatePosition = glm::vec3(0.0f, 5.0f, -3.0f);
 
+bool isColliding(glm::vec3 pos, glm::vec3* low, glm::vec3* high, int count) {
+	for (int i = 0; i < count; i++) {
+		glm::vec3 currentLow = low[i];
+		glm::vec3 currentHigh = high[i];
+
+		bool isInsideBounds =
+			pos.x >= currentLow.x && pos.x <= currentHigh.x &&
+			pos.y >= currentLow.y && pos.y <= currentHigh.y &&
+			pos.z >= currentLow.z && pos.z <= currentHigh.z;
+
+		if (isInsideBounds) {
+			return true;
+		}
+	}
+	return false;
+}
+
+glm::vec3 collisionChecker(glm::vec3 start, glm::vec3 stop, glm::vec3 low, glm::vec3 high) {
+	glm::vec3 dir = stop - start;
+	float tnear = -FLT_MAX;
+	float tfar = FLT_MAX;
+	float t1, t2;
+
+	for (int i = 0; i < 3; i++) {
+		int count = 0;
+		for (int j = 0; j < 3; j++) {
+			if (i == j) {
+				continue;
+			}
+			if (dir[i] == 0) {
+				count++;
+			}
+		}
+		if (count == 2) {
+			if (start[i] < low[i] || start[i] > high[i]) {
+				return stop;
+			}
+		}
+		t1 = (low[i] - start[i]) / dir[i];
+		t2 = (high[i] - start[i]) / dir[i];
+
+		if (t1 > t2) {
+			std::swap(t1, t2);
+		}
+		if (t1 > tnear) {
+			tnear = t1;
+		}
+		if (t2 < tfar) {
+			tfar = t2;
+		}
+		if (tnear > tfar || tfar < 0 || tnear > 1) {
+			return stop;
+		}
+
+	}
+	glm::vec3 newDir = start + dir * float(tnear * 0.001);
+	return newDir;
+}
+
+void add_brick_cube(double x, double y, double z)
+{
+	
+	// Budynek bez colors i normals (cokolwiek to zmienia)
+	glm::mat4 M_new = glm::mat4(1.0f);
+	M_new = glm::translate(M_new, glm::vec3(x, y, z)); // pozycja
+	//M_new = glm::scale(M_new, glm::vec3(2.0f, 10.0f, 2.0f));
+	// Przekaż macierz modelu do programu cieniującego
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M_new));
+
+	// Przekaż inne dane dla do atrybutów programu cieniującego
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex69);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex69);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex69);
+	
+	
+	// Wywołaj glDrawArrays dla obiektu, aby go narysować
+	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+	// Wyłącz przesyłanie danych do atrybutów dla obiektu
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
+}
+
+void add_stone_cube(double x, double y, double z)
+{
+
+	// Budynek bez colors i normals (cokolwiek to zmienia)
+	glm::mat4 M_new = glm::mat4(1.0f);
+	M_new = glm::translate(M_new, glm::vec3(x, y, z)); // pozycja
+	//M_new = glm::scale(M_new, glm::vec3(2.0f, 10.0f, 2.0f));
+	// Przekaż macierz modelu do programu cieniującego
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M_new));
+
+	// Przekaż inne dane dla do atrybutów programu cieniującego
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex3);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex4);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex5);
+
+	// Wywołaj glDrawArrays dla obiektu, aby go narysować
+	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+	// Wyłącz przesyłanie danych do atrybutów dla obiektu
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
+}
+
+void add_building(double x, double y, double z, int height)
+{
+	for (int i = 0; i < height - 1; i++)
+	{
+		add_brick_cube(x, y + i * 2, z);
+		add_brick_cube(x+2, y + i * 2, z+2);
+		add_brick_cube(x, y + i * 2, z + 2);
+		add_brick_cube(x + 2, y + i * 2, z);
+	}
+	add_stone_cube(x, height * 2, z);
+	add_stone_cube(x + 2, height * 2, z + 2);
+	add_stone_cube(x, height * 2, z + 2);
+	add_stone_cube(x + 2, height * 2, z);
+}
+
+void build_floor(double x, double y, double z)
+{
+	for (int i = abs(x); i > x; i = i-2)
+	{
+		for (int j = abs(z); j > z; j = j-2)
+		{
+			add_stone_cube(i, y, j);
+		}
+	}
+}
 
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	//************Tutaj umieszczaj kod rysujący obraz******************l
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	/*glm::mat4 V = glm::lookAt(
-		glm::vec3(0, 0, -4),
-		glm::vec3(0, 0, -4),
-		glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz widoku */
+	// obliczanie pozycji ufo 
 	cameraPos += cameraSpeedW * cameraFront * shiftSpeed;
 	cameraPos -= cameraSpeedS * cameraFront * shiftSpeed;
 	cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeedA * shiftSpeed;
@@ -195,179 +372,149 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	cameraPos += cameraSpeedSpace * glm::vec3(0, 1, 0) * shiftSpeed;
 	cameraPos -= cameraSpeedCtrl * glm::vec3(0, 1, 0) * shiftSpeed;
 
-	// Oblicz macierz widoku dla kamery z trzeciej osoby
-	glm::vec3 ufoPosition = cameraPos + cameraFront;
+	
+	// tutaj musza sie znalezc pozycje koncow wszystkich budynkow itd, z ktorymi nie chcemy miec kolizji
+	std::vector<glm::vec3> lowBounds;
+	std::vector<glm::vec3> highBounds;
+	
+	lowBounds = {glm::vec3(-50,-1,-50)};
+	highBounds = {glm::vec3(50,1,50)};
+	int count = std::end(lowBounds) - std::begin(lowBounds);
+
+	// Podłoga
+	build_floor(-49, 0, -49);
+
+
+	// Budynki
+	add_building(15.0f, 2.0f, 7.0f, 3); //x, y, z, height
+	lowBounds.push_back(glm::vec3(14, 0, 6)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(18, 7, 10)); //x+3, y*2+1, z+3
+
+	add_building(0.0f, 2.0f, 0.0f, 7); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-1, 0, -1)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(3, 15, 3)); //x+3, y*2+1, z+3
+
+	add_building(-20.0f, 2.0f, -10.0f, 15); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-21, 0, -11)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-17, 31, -7)); //x+3, y*2+1, z+3
+
+	add_building(-20.0f, 2.0f, -5.0f, 14); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-21, 0, -6)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-17, 29, -2)); //x+3, y*2+1, z+3
+
+	add_building(30.0f, 2.0f, 25.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(29, 0, 24)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(33, 21, 28)); //x+3, y*2+1, z+3
+
+
+
+	count = std::end(lowBounds) - std::begin(lowBounds);
+	
+	// sprawdzanie kolizji
+	for (int i = 0; i < count; i++) {
+		cameraPos = collisionChecker(ufoLatePosition, cameraPos, lowBounds[i], highBounds[i]);
+	}
+
+
+	glm::vec3 ufoPosition = cameraPos; // camera pos to tak naprawde pozycja ufo
+	ufoLatePosition = ufoPosition;
 	glm::vec3 cameraTarget = ufoPosition; // Punkt, na który kamera patrzy
-	glm::mat4 V = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+	glm::mat4 V = glm::lookAt(cameraPos - cameraFront, cameraTarget, cameraUp);
 
-	//glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
-	glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 0.01f, 50.0f); //Wylicz macierz rzutowania
+	glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 0.01f, 200.0f); //Wylicz macierz rzutowania
 
 	glm::mat4 M = glm::mat4(1.0f);
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
 
-	sp->use();//Aktywacja programu cieniującego
+	spTextured->use();//Aktywacja programu cieniującego
 	//Przeslij parametry programu cieniującego do karty graficznej
-	glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
-	glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+	glUniformMatrix4fv(spTextured->u("P"), 1, false, glm::value_ptr(P));
+	glUniformMatrix4fv(spTextured->u("V"), 1, false, glm::value_ptr(V));
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M));
 
-	glEnableVertexAttribArray(sp->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices); //Wskaż tablicę z danymi dla atrybutu vertex
+	glEnableVertexAttribArray(spTextured->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices); //Wskaż tablicę z danymi dla atrybutu vertex
 
-	glEnableVertexAttribArray(sp->a("color"));  //Włącz przesyłanie danych do atrybutu color
-	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, colors); //Wskaż tablicę z danymi dla atrybutu color
+	glEnableVertexAttribArray(spTextured->a("color"));  //Włącz przesyłanie danych do atrybutu color
+	glVertexAttribPointer(spTextured->a("color"), 4, GL_FLOAT, false, 0, colors); //Wskaż tablicę z danymi dla atrybutu color
 
-	glEnableVertexAttribArray(sp->a("normal"));  //Włącz przesyłanie danych do atrybutu normal
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, normals); //Wskaż tablicę z danymi dla atrybutu normal
+	glEnableVertexAttribArray(spTextured->a("normal"));  //Włącz przesyłanie danych do atrybutu normal
+	glVertexAttribPointer(spTextured->a("normal"), 4, GL_FLOAT, false, 0, normals); //Wskaż tablicę z danymi dla atrybutu normal
 
-	glEnableVertexAttribArray(sp->a("c1"));  //Włącz przesyłanie danych do atrybutu normal
-	glVertexAttribPointer(sp->a("c1"), 4, GL_FLOAT, false, 0, myCubeC1); //Wskaż tablicę z danymi dla atrybutu normal
+	glEnableVertexAttribArray(spTextured->a("c1"));  //Włącz przesyłanie danych do atrybutu normal
+	glVertexAttribPointer(spTextured->a("c1"), 4, GL_FLOAT, false, 0, myCubeC1); //Wskaż tablicę z danymi dla atrybutu normal
 
-	glEnableVertexAttribArray(sp->a("c2"));  //Włącz przesyłanie danych do atrybutu normal
-	glVertexAttribPointer(sp->a("c2"), 4, GL_FLOAT, false, 0, myCubeC2); //Wskaż tablicę z danymi dla atrybutu normal
+	glEnableVertexAttribArray(spTextured->a("c2"));  //Włącz przesyłanie danych do atrybutu normal
+	glVertexAttribPointer(spTextured->a("c2"), 4, GL_FLOAT, false, 0, myCubeC2); //Wskaż tablicę z danymi dla atrybutu normal
 
-	glEnableVertexAttribArray(sp->a("c3"));  //Włącz przesyłanie danych do atrybutu normal
-	glVertexAttribPointer(sp->a("c3"), 4, GL_FLOAT, false, 0, myCubeC3); //Wskaż tablicę z danymi dla atrybutu normal
+	glEnableVertexAttribArray(spTextured->a("c3"));  //Włącz przesyłanie danych do atrybutu normal
+	glVertexAttribPointer(spTextured->a("c3"), 4, GL_FLOAT, false, 0, myCubeC3); //Wskaż tablicę z danymi dla atrybutu normal
 
-	glEnableVertexAttribArray(sp->a("texCoord0"));  //Włącz przesyłanie danych do atrybutu texCoord
-	glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords); //Wskaż tablicę z danymi dla atrybutu texCoord
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));  //Włącz przesyłanie danych do atrybutu texCoord
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords); //Wskaż tablicę z danymi dla atrybutu texCoord
 
-	glUniform1i(sp->u("textureMap0"), 0);
+	glUniform1i(spTextured->u("textureMap0"), 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex0);
+	glBindTexture(GL_TEXTURE_2D, tex3);
 
-	glUniform1i(sp->u("textureMap1"), 1);
+	glUniform1i(spTextured->u("textureMap1"), 1);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, tex1);
+	glBindTexture(GL_TEXTURE_2D, tex4);
 
-	glUniform1i(sp->u("textureMap2"), 2);
+	glUniform1i(spTextured->u("textureMap2"), 2);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, tex2);
+	glBindTexture(GL_TEXTURE_2D, tex5);
 
 	glDrawArrays(GL_TRIANGLES, 0, vertexCount); //Narysuj obiekt
 
-	glDisableVertexAttribArray(sp->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
-	glDisableVertexAttribArray(sp->a("color"));  //Wyłącz przesyłanie danych do atrybutu color
-	glDisableVertexAttribArray(sp->a("normal"));  //Wyłącz przesyłanie danych do atrybutu normal
-	glDisableVertexAttribArray(sp->a("texCoord0"));  //Wyłącz przesyłanie danych do atrybutu texCoord0
+	glDisableVertexAttribArray(spTextured->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
+	glDisableVertexAttribArray(spTextured->a("color"));  //Wyłącz przesyłanie danych do atrybutu color
+	glDisableVertexAttribArray(spTextured->a("normal"));  //Wyłącz przesyłanie danych do atrybutu normal
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));  //Wyłącz przesyłanie danych do atrybutu texCoord0
 
 
 
-
-	// Podloga
-	glm::mat4 M2 = glm::mat4(1.0f);
-	M2 = glm::translate(M2, glm::vec3(0.0f, 0.0f, 0.0f)); // Przesuń drugi obiekt wzdłuż osi x
-	M2 = glm::scale(M2, glm::vec3(25.0f, 1.0f, 25.0f));
-	
-	// Przekaż nową macierz modelu (M2) do programu cieniującego
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M2));
-
-	// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
-	glEnableVertexAttribArray(sp->a("vertex"));
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
-
-	glEnableVertexAttribArray(sp->a("color"));
-	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, colors);
-
-	glEnableVertexAttribArray(sp->a("normal"));
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, normals);
-
-	glEnableVertexAttribArray(sp->a("texCoord0"));
-	glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
-
-	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
-	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-	// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
-	glDisableVertexAttribArray(sp->a("vertex"));
-	glDisableVertexAttribArray(sp->a("color"));
-	glDisableVertexAttribArray(sp->a("normal"));
-	glDisableVertexAttribArray(sp->a("texCoord0"));
-
-	// Budynek 1 // bez colors i normals (cokolwiek to zmienia)
-	glm::mat4 M3 = glm::mat4(1.0f);
-	M3 = glm::translate(M3, glm::vec3(0.0f, 2.0f, 0.0f)); // Przesuń drugi obiekt wzdłuż osi x
-	M3 = glm::scale(M3, glm::vec3(2.0f, 10.0f, 2.0f));
-	// Przekaż nową macierz modelu (M2) do programu cieniującego
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M3));
-
-	// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
-	glEnableVertexAttribArray(sp->a("vertex"));
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
-
-	glEnableVertexAttribArray(sp->a("texCoord0"));
-	glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
-
-	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
-	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-	// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
-	glDisableVertexAttribArray(sp->a("vertex"));
-	glDisableVertexAttribArray(sp->a("texCoord0"));
-
-	// Budynek 2
-	glm::mat4 M4 = glm::mat4(1.0f);
-	M4 = glm::translate(M4, glm::vec3(10.0f, 2.0f, 7.0f)); // Przesuń drugi obiekt wzdłuż osi x
-	M4 = glm::scale(M4, glm::vec3(2.0f, 10.0f, 2.0f));
-	// Przekaż nową macierz modelu (M2) do programu cieniującego
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M4));
-
-	// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
-	glEnableVertexAttribArray(sp->a("vertex"));
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
-
-	glEnableVertexAttribArray(sp->a("color"));
-	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, colors);
-
-	glEnableVertexAttribArray(sp->a("normal"));
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, normals);
-
-	glEnableVertexAttribArray(sp->a("texCoord0"));
-	glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
-
-	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
-	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-	// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
-	glDisableVertexAttribArray(sp->a("vertex"));
-	glDisableVertexAttribArray(sp->a("color"));
-	glDisableVertexAttribArray(sp->a("normal"));
-	glDisableVertexAttribArray(sp->a("texCoord0"));
 
 	
 
 	// UFO, wokol ktorego bedzie sie obracac kamera
 	glm::mat4 M6 = glm::mat4(1.0f);
 	M6 = glm::translate(M6, ufoPosition); // Przesuń drugi obiekt wzdłuż osi x
-	M6 = glm::scale(M6, glm::vec3(0.1f,0.1f,0.1f));
+	M6 = glm::scale(M6, glm::vec3(0.1f, 0.1f, 0.1f));
+
+	M6 = glm::rotate(M6, -angle_ufo, glm::vec3(0, 1, 0)); // obracanie wraz z ruchem myszki
+
+	// skrzywianie w zaleznosci w ktora strone leci
+	M6 = glm::rotate(M6, cameraSpeedW * 5, glm::vec3(1, 0, 0));
+	M6 = glm::rotate(M6, -cameraSpeedA * 5, glm::vec3(0, 0, 1));
+	M6 = glm::rotate(M6, cameraSpeedD * 5, glm::vec3(0, 0, 1));
+	M6 = glm::rotate(M6, -cameraSpeedS * 5, glm::vec3(1, 0, 0));
 
 	// Przekaż nową macierz modelu (M2) do programu cieniującego
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M6));
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M6));
 
 	// Przekaż inne dane dla drugiego obiektu do atrybutów programu cieniującego
-	glEnableVertexAttribArray(sp->a("vertex"));
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
 
-	glEnableVertexAttribArray(sp->a("color"));
-	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, colors);
+	glEnableVertexAttribArray(spTextured->a("color"));
+	glVertexAttribPointer(spTextured->a("color"), 4, GL_FLOAT, false, 0, colors);
 
-	glEnableVertexAttribArray(sp->a("normal"));
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, normals);
+	glEnableVertexAttribArray(spTextured->a("normal"));
+	glVertexAttribPointer(spTextured->a("normal"), 4, GL_FLOAT, false, 0, normals);
 
-	glEnableVertexAttribArray(sp->a("texCoord0"));
-	glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
 
 	// Wywołaj glDrawArrays dla drugiego obiektu, aby go narysować
 	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
 	// Wyłącz przesyłanie danych do atrybutów dla drugiego obiektu
-	glDisableVertexAttribArray(sp->a("vertex"));
-	glDisableVertexAttribArray(sp->a("color"));
-	glDisableVertexAttribArray(sp->a("normal"));
-	glDisableVertexAttribArray(sp->a("texCoord0"));
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("color"));
+	glDisableVertexAttribArray(spTextured->a("normal"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
 
 
 	glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
@@ -388,6 +535,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	const float sensitivity = 0.1f;
 	xoffset *= sensitivity;
 	yoffset *= sensitivity;
+
+	angle_ufo += xoffset * 0.01745;
 
 	yaw += xoffset;
 	pitch += yoffset;
