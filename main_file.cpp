@@ -78,7 +78,7 @@ GLuint tex14;
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 5.0f, -4.0f);
+glm::vec3 cameraPos = glm::vec3(-5.0f, 1.01f, -4.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, 1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -102,6 +102,8 @@ bool firstMouse = true;
 int initialHeight = 900;
 int initialWidth = 1600;
 
+//pozycja startowa
+glm::vec3 ufoLatePosition = cameraPos;
 
 //Procedura obsługi błędów
 void error_callback(int error, const char* description) {
@@ -112,23 +114,15 @@ void error_callback(int error, const char* description) {
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	
 	if (action == GLFW_PRESS) {
-		if (key == GLFW_KEY_LEFT) speed_x = -PI / 2;
-		if (key == GLFW_KEY_RIGHT) speed_x = PI / 2;
-		if (key == GLFW_KEY_UP) speed_y = PI / 2;
-		if (key == GLFW_KEY_DOWN) speed_y = -PI / 2;
 		if (key == GLFW_KEY_W) cameraSpeedW = 0.1f;
 		if (key == GLFW_KEY_S) cameraSpeedS = 0.1f;
 		if (key == GLFW_KEY_A) cameraSpeedA = 0.1f;
 		if (key == GLFW_KEY_D) cameraSpeedD = 0.1f;
 		if (key == GLFW_KEY_SPACE) cameraSpeedSpace = 0.1f;
 		if (key == GLFW_KEY_LEFT_CONTROL) cameraSpeedCtrl = 0.1f;
-		if (key == GLFW_KEY_LEFT_SHIFT) shiftSpeed = 3.0f; // shift przyspiesza poruszanie
+		if (key == GLFW_KEY_LEFT_SHIFT) shiftSpeed = 5.0f; // shift przyspiesza poruszanie
 	}
 	if (action == GLFW_RELEASE) {
-		if (key == GLFW_KEY_LEFT) speed_x = 0;
-		if (key == GLFW_KEY_RIGHT) speed_x = 0;
-		if (key == GLFW_KEY_UP) speed_y = 0;
-		if (key == GLFW_KEY_DOWN) speed_y = 0;
 		if (key == GLFW_KEY_W) cameraSpeedW = 0.0f;
 		if (key == GLFW_KEY_S) cameraSpeedS = 0.0f;
 		if (key == GLFW_KEY_A) cameraSpeedA = 0.0f;
@@ -166,12 +160,8 @@ GLuint readTexture(const char* filename) {
 		GL_RGBA, GL_UNSIGNED_BYTE, (unsigned char*)image.data());
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glTexParameteri(GL_TEXTURE_2D,
-		GL_TEXTURE_WRAP_S,
-		GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D,
-		GL_TEXTURE_WRAP_T,
-		GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_MIRRORED_REPEAT);
 
 
 	return tex;
@@ -219,8 +209,6 @@ void freeOpenGLProgram(GLFWwindow* window) {
 	delete spTextured;
 }
 
-
-glm::vec3 ufoLatePosition = glm::vec3(0.0f, 5.0f, -3.0f);
 
 bool isColliding(glm::vec3 pos, glm::vec3* low, glm::vec3* high, int count) {
 	for (int i = 0; i < count; i++) {
@@ -324,7 +312,7 @@ void add_concrete_cube(double x, double y, double z)
 	// Budynek bez colors i normals (cokolwiek to zmienia)
 	glm::mat4 M_new = glm::mat4(1.0f);
 	M_new = glm::translate(M_new, glm::vec3(x, y, z)); // pozycja
-	//M_new = glm::scale(M_new, glm::vec3(2.0f, 10.0f, 2.0f));
+	//M_new = glm::scale(M_new, glm::vec3(1.0f, 0.1f, 1.0f));
 	// Przekaż macierz modelu do programu cieniującego
 	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M_new));
 
@@ -584,25 +572,94 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 
 
 	// Budynki
-	add_building(15.0f, 2.0f, 7.0f, 3); //x, y, z, height
-	lowBounds.push_back(glm::vec3(14, 0, 6)); //x-1, 0, z-1
-	highBounds.push_back(glm::vec3(18, 7, 10)); //x+3, y*2+1, z+3
+	add_building(11.0f, 2.0f, 11.0f, 3); //x, y, z, height
+	lowBounds.push_back(glm::vec3(10, 0, 10)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(14, 7, 14)); //x+3, height*2+1, z+3
 
 	add_building(0.0f, 2.0f, 0.0f, 7); //x, y, z, height
 	lowBounds.push_back(glm::vec3(-1, 0, -1)); //x-1, 0, z-1
-	highBounds.push_back(glm::vec3(3, 15, 3)); //x+3, y*2+1, z+3
+	highBounds.push_back(glm::vec3(3, 15, 3)); //x+3, height*2+1, z+3
 
-	add_building(-20.0f, 2.0f, -10.0f, 15); //x, y, z, height
-	lowBounds.push_back(glm::vec3(-21, 0, -11)); //x-1, 0, z-1
-	highBounds.push_back(glm::vec3(-17, 31, -7)); //x+3, y*2+1, z+3
+	add_building(-20.0f, 2.0f, 0.0f, 15); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-21, 0, -1)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-17, 31, 3)); //x+3, y*2+1, z+3
 
 	add_building(-20.0f, 2.0f, -5.0f, 14); //x, y, z, height
 	lowBounds.push_back(glm::vec3(-21, 0, -6)); //x-1, 0, z-1
 	highBounds.push_back(glm::vec3(-17, 29, -2)); //x+3, y*2+1, z+3
 
-	add_building(30.0f, 2.0f, 25.0f, 10); //x, y, z, height
-	lowBounds.push_back(glm::vec3(29, 0, 24)); //x-1, 0, z-1
-	highBounds.push_back(glm::vec3(33, 21, 28)); //x+3, y*2+1, z+3
+	add_building(31.0f, 2.0f, 23.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(30, 0, 22)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(34, 21, 26)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 3.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 2)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 6)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 8.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 7)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 11)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 15.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 14)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 18)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 23.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 22)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 26)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 30.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 29)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 33)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 37.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 36)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 40)); //x+3, y*2+1, z+3
+
+	add_building(47.0f, 2.0f, 44.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(46, 0, 43)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(50, 21, 47)); //x+3, y*2+1, z+3
+
+	add_building(31.0f, 2.0f, -43.0f, 6); //x, y, z, height
+	lowBounds.push_back(glm::vec3(30, 0, -44)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(34, 13, -40)); //x+3, y*2+1, z+3
+
+	add_building(27.0f, 2.0f, -43.0f, 6); //x, y, z, height
+	lowBounds.push_back(glm::vec3(26, 0, -44)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(30, 13, -40)); //x+3, y*2+1, z+3
+
+	add_building(27.0f, 2.0f, -39.0f, 6); //x, y, z, height
+	lowBounds.push_back(glm::vec3(26, 0, -40)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(30, 13, -36)); //x+3, y*2+1, z+3
+
+	add_building(27.0f, 2.0f, -35.0f, 6); //x, y, z, height
+	lowBounds.push_back(glm::vec3(26, 0, -36)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(30, 13, -32)); //x+3, y*2+1, z+3
+	
+	add_building(-47.0f, 2.0f, 8.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 7)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 11)); //x+3, y*2+1, z+3
+
+	add_building(-47.0f, 2.0f, 15.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 14)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 18)); //x+3, y*2+1, z+3
+
+	add_building(-47.0f, 2.0f, 23.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 22)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 26)); //x+3, y*2+1, z+3
+
+	add_building(-47.0f, 2.0f, 30.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 29)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 33)); //x+3, y*2+1, z+3
+
+	add_building(-47.0f, 2.0f, 37.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 36)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 40)); //x+3, y*2+1, z+3
+
+	add_building(-47.0f, 2.0f, 44.0f, 10); //x, y, z, height
+	lowBounds.push_back(glm::vec3(-48, 0, 43)); //x-1, 0, z-1
+	highBounds.push_back(glm::vec3(-44, 21, 47)); //x+3, y*2+1, z+3
+	
 
 
 
