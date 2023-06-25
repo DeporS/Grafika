@@ -71,6 +71,9 @@ GLuint tex83;
 GLuint tex9;
 GLuint tex10;
 GLuint tex11;
+GLuint tex12;
+GLuint tex13;
+GLuint tex14;
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
@@ -202,6 +205,10 @@ void initOpenGLProgram(GLFWwindow* window) {
 	tex9 = readTexture("Concrete_Wall_008_basecolor.png");
 	tex10 = readTexture("Concrete_Wall_008_normal.png");
 	tex11 = readTexture("Concrete_Wall_008_height.png");
+
+	tex12 = readTexture("Ground003_2K_Color.png");
+	tex13 = readTexture("Ground003_2K_NormalGL.png");
+	tex14 = readTexture("Ground003_2K_Displacement.png");
 }
 
 
@@ -385,6 +392,42 @@ void add_stone_cube(double x, double y, double z)
 	glDisableVertexAttribArray(spTextured->a("texCoord0"));
 }
 
+void add_grass_cube(double x, double y, double z)
+{
+	// Budynek bez colors i normals (cokolwiek to zmienia)
+	glm::mat4 M_new = glm::mat4(1.0f);
+	M_new = glm::translate(M_new, glm::vec3(x, y, z)); // pozycja
+	//M_new = glm::scale(M_new, glm::vec3(2.0f, 10.0f, 2.0f));
+	// Przekaż macierz modelu do programu cieniującego
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M_new));
+
+	// Przekaż inne dane dla do atrybutów programu cieniującego
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex12);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex13);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex14);
+
+	// Wywołaj glDrawArrays dla obiektu, aby go narysować
+	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+	// Wyłącz przesyłanie danych do atrybutów dla obiektu
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
+}
+
 void add_building(double x, double y, double z, int height)
 {
 	for (int i = 0; i < height - 1; i++)
@@ -406,7 +449,11 @@ void build_floor(double x, double y, double z)
 	{
 		for (int j = abs(z); j > z; j = j-2)
 		{
-			add_stone_cube(i, y, j);
+			if (i % 5 == 0 || j % 9 == 0)
+				add_stone_cube(i, y, j);
+			else
+			add_grass_cube(i, y, j);
+
 		}
 	}
 }
