@@ -65,7 +65,12 @@ GLuint tex4;
 GLuint tex5;
 GLuint tex6;
 GLuint tex7;
-GLuint tex69;
+GLuint tex8;
+GLuint tex82;
+GLuint tex83;
+GLuint tex9;
+GLuint tex10;
+GLuint tex11;
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
@@ -190,7 +195,13 @@ void initOpenGLProgram(GLFWwindow* window) {
 	tex6 = readTexture("iron.png");
 	tex7 = readTexture("glass.png");
 
-	tex69 = readTexture("zajebistatekstura.png");
+	tex8 = readTexture("wall_with_broken_windows_31_66_diffuse-708x708.png");
+	tex82 = readTexture("wall_with_broken_windows_31_66_normal-708x708.png");
+	tex83 = readTexture("wall_with_broken_windows_31_66_height-708x708.png");
+
+	tex9 = readTexture("Concrete_Wall_008_basecolor.png");
+	tex10 = readTexture("Concrete_Wall_008_normal.png");
+	tex11 = readTexture("Concrete_Wall_008_height.png");
 }
 
 
@@ -263,7 +274,7 @@ glm::vec3 collisionChecker(glm::vec3 start, glm::vec3 stop, glm::vec3 low, glm::
 	return newDir;
 }
 
-void add_brick_cube(double x, double y, double z)
+void add_window_cube(double x, double y, double z)
 {
 	
 	// Budynek bez colors i normals (cokolwiek to zmienia)
@@ -282,17 +293,53 @@ void add_brick_cube(double x, double y, double z)
 
 	glUniform1i(spTextured->u("textureMap0"), 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex69);
+	glBindTexture(GL_TEXTURE_2D, tex8);
 
 	glUniform1i(spTextured->u("textureMap1"), 1);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, tex69);
+	glBindTexture(GL_TEXTURE_2D, tex82);
 
 	glUniform1i(spTextured->u("textureMap2"), 2);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, tex69);
+	glBindTexture(GL_TEXTURE_2D, tex83);
 	
 	
+	// Wywołaj glDrawArrays dla obiektu, aby go narysować
+	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+	// Wyłącz przesyłanie danych do atrybutów dla obiektu
+	glDisableVertexAttribArray(spTextured->a("vertex"));
+	glDisableVertexAttribArray(spTextured->a("texCoord0"));
+}
+
+void add_concrete_cube(double x, double y, double z)
+{
+	// Budynek bez colors i normals (cokolwiek to zmienia)
+	glm::mat4 M_new = glm::mat4(1.0f);
+	M_new = glm::translate(M_new, glm::vec3(x, y, z)); // pozycja
+	//M_new = glm::scale(M_new, glm::vec3(2.0f, 10.0f, 2.0f));
+	// Przekaż macierz modelu do programu cieniującego
+	glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(M_new));
+
+	// Przekaż inne dane dla do atrybutów programu cieniującego
+	glEnableVertexAttribArray(spTextured->a("vertex"));
+	glVertexAttribPointer(spTextured->a("vertex"), 4, GL_FLOAT, false, 0, vertices);
+
+	glEnableVertexAttribArray(spTextured->a("texCoord0"));
+	glVertexAttribPointer(spTextured->a("texCoord0"), 2, GL_FLOAT, false, 0, texCoords);
+
+	glUniform1i(spTextured->u("textureMap0"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex9);
+
+	glUniform1i(spTextured->u("textureMap1"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, tex10);
+
+	glUniform1i(spTextured->u("textureMap2"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, tex11);
+
 	// Wywołaj glDrawArrays dla obiektu, aby go narysować
 	glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -342,15 +389,15 @@ void add_building(double x, double y, double z, int height)
 {
 	for (int i = 0; i < height - 1; i++)
 	{
-		add_brick_cube(x, y + i * 2, z);
-		add_brick_cube(x+2, y + i * 2, z+2);
-		add_brick_cube(x, y + i * 2, z + 2);
-		add_brick_cube(x + 2, y + i * 2, z);
+		add_window_cube(x, y + i * 2, z);
+		add_window_cube(x+2, y + i * 2, z+2);
+		add_window_cube(x, y + i * 2, z + 2);
+		add_window_cube(x + 2, y + i * 2, z);
 	}
-	add_stone_cube(x, height * 2, z);
-	add_stone_cube(x + 2, height * 2, z + 2);
-	add_stone_cube(x, height * 2, z + 2);
-	add_stone_cube(x + 2, height * 2, z);
+	add_concrete_cube(x, height * 2, z);
+	add_concrete_cube(x + 2, height * 2, z + 2);
+	add_concrete_cube(x, height * 2, z + 2);
+	add_concrete_cube(x + 2, height * 2, z);
 }
 
 void build_floor(double x, double y, double z)
