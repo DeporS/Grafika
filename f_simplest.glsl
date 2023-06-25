@@ -53,7 +53,7 @@ void main(void) {
 	vec4 ml4 = normalize(l4);
 	vec4 ml5 = normalize(l5);
 	vec4 mv = normalize(v);
-	vec2 tc = parallax(mv, iTexCoord0, 700, 0.03);
+	vec2 tc = parallax(mv, iTexCoord0, 700, 0.02);
 	vec4 mn = normalize(vec4(texture(textureMap1, tc).rgb*2-1,0));
 	
 	//Wektor odbity
