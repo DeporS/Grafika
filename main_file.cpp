@@ -624,7 +624,11 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	glm::mat4 M = glm::mat4(1.0f);
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+	M = glm::translate(M, glm::vec3(0, -5, 0));
 
+
+
+	// Kostka podstawowa
 	spTextured->use();//Aktywacja programu cieniującego
 	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(spTextured->u("P"), 1, false, glm::value_ptr(P));

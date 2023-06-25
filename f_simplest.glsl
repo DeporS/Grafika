@@ -88,10 +88,9 @@ void main(void) {
 	float rv4 = pow(clamp(dot(mr4, mv), 0, 1),25);
 	pixelColor += vec4(kd.rgb * nl4, kd.a) + vec4(ks.rgb*rv4, 0);
 
-	/*
 	//Obliczenie modelu oświetlenia
 	float nl5 = clamp(dot(mn, ml5), 0, 1);
 	float rv5 = pow(clamp(dot(mr5, mv), 0, 1),25);
 	pixelColor += vec4(kd.rgb * nl5, kd.a) + vec4(ks.rgb*rv5, 0);
-	*/
+	
 }

@@ -29,11 +29,11 @@ out vec2 iTexCoord0;
 
 void main(void) {
     mat4 invTBN = mat4(c1,c2,c3,vec4(0,0,0,1));
-    vec4 lp = vec4(0, 5, 50, 1); //przestrzeń świata
-    vec4 lp2 = vec4(50, 5, 0, 1); //przestrzeń świata
-    vec4 lp3 = vec4(-50, 5, 0, 1); //przestrzeń świata
-    vec4 lp4 = vec4(0, 5, -50, 1); //przestrzeń świata
-    vec4 lp5 = vec4(0, 50, 0, 1); //przestrzeń świata
+    vec4 lp = vec4(-50, 15, 50, 1); //przestrzeń świata
+    vec4 lp2 = vec4(50, 15, -50, 1); //przestrzeń świata
+    vec4 lp3 = vec4(-50, 15, -50, 1); //przestrzeń świata
+    vec4 lp4 = vec4(50, 15, 50, 1); //przestrzeń świata
+    vec4 lp5 = vec4(0, 200, 0, 1); //przestrzeń świata
     //l = normalize(V * lp - V*M*vertex); //wektor do światła w przestrzeni oka
     //v = normalize(vec4(0, 0, 0, 1) - V * M * vertex); //wektor do obserwatora w przestrzeni oka
     l = normalize(invTBN*(inverse(M)*lp-vertex));
